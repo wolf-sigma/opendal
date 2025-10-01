@@ -75,13 +75,20 @@ impl SharePointWriter {
                 let item: SharePointItem = serde_json::from_reader(response.into_body().reader())
                     .map_err(new_json_deserialize_error)?;
 
-                let mut meta = Metadata::new(EntryMode::FILE)
-                    .with_etag(item.e_tag)
-                    .with_content_length(item.size.max(0) as u64);
+                let mut meta = Metadata::new(EntryMode::FILE);
 
-                let last_modified = item.last_modified_date_time;
-                let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
-                meta.set_last_modified(date_utc_last_modified);
+                if let Some(etag) = item.e_tag {
+                    meta = meta.with_etag(etag);
+                }
+
+                if let Some(size) = item.size {
+                    meta = meta.with_content_length(size.max(0) as u64);
+                }
+
+                if let Some(last_modified) = item.last_modified_date_time {
+                    let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+                    meta.set_last_modified(date_utc_last_modified);
+                }
 
                 Ok(meta)
             }
@@ -130,13 +137,20 @@ impl SharePointWriter {
                     let item: SharePointItem = serde_json::from_reader(response.into_body().reader())
                         .map_err(new_json_deserialize_error)?;
 
-                    let mut meta = Metadata::new(EntryMode::FILE)
-                        .with_etag(item.e_tag)
-                        .with_content_length(item.size.max(0) as u64);
+                    let mut meta = Metadata::new(EntryMode::FILE);
 
-                    let last_modified = item.last_modified_date_time;
-                    let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
-                    meta.set_last_modified(date_utc_last_modified);
+                    if let Some(etag) = item.e_tag {
+                        meta = meta.with_etag(etag);
+                    }
+
+                    if let Some(size) = item.size {
+                        meta = meta.with_content_length(size.max(0) as u64);
+                    }
+
+                    if let Some(last_modified) = item.last_modified_date_time {
+                        let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+                        meta.set_last_modified(date_utc_last_modified);
+                    }
                     return Ok(meta);
                 }
                 _ => return Err(parse_error(response)),

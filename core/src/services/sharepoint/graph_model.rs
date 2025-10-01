@@ -59,10 +59,10 @@ pub struct SharePointSiteInfo {
 pub struct SharePointItem {
     pub id: String,
     pub name: String,
-    pub last_modified_date_time: String,
-    pub e_tag: String,
-    pub size: i64,
-    pub parent_reference: ParentReference,
+    pub last_modified_date_time: Option<String>,
+    pub e_tag: Option<String>,
+    pub size: Option<i64>,
+    pub parent_reference: Option<ParentReference>,
     #[serde(flatten)]
     pub item_type: ItemType,
     pub versions: Option<Vec<SharePointItemVersion>>,
@@ -71,9 +71,9 @@ pub struct SharePointItem {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParentReference {
-    pub path: String,
+    pub path: Option<String>,
     pub drive_id: String,
-    pub id: String,
+    pub id: Option<String>,
 }
 
 /// Additional properties when represents a facet of a "DriveItem":
@@ -248,10 +248,10 @@ mod tests {
         assert_eq!(response.value.len(), 2);
         let item = &response.value[0];
         assert_eq!(item.name, "empty_folder");
-        assert_eq!(item.last_modified_date_time, "2025-02-23T11:45:26Z");
-        assert_eq!(item.e_tag, "\"{3B131E1C-7D81-20AF-80D0-450D00000000},10\"");
-        assert_eq!(item.size, 0);
-        assert_eq!(item.parent_reference.path, "/drive/root:");
+        assert_eq!(item.last_modified_date_time, Some("2025-02-23T11:45:26Z".to_string()));
+        assert_eq!(item.e_tag, Some("\"{3B131E1C-7D81-20AF-80D0-450D00000000},10\"".to_string()));
+        assert_eq!(item.size, Some(0));
+        assert_eq!(item.parent_reference.as_ref().unwrap().path, Some("/drive/root:".to_string()));
         if let ItemType::Folder { folder, .. } = &item.item_type {
             assert_eq!(folder.child_count, 0);
         } else {
@@ -332,10 +332,10 @@ mod tests {
 
         let item: SharePointItem = serde_json::from_str(data).unwrap();
         assert_eq!(item.name, "filename.txt");
-        assert_eq!(item.last_modified_date_time, "2025-02-16T19:49:05Z");
-        assert_eq!(item.e_tag, "\"{3B131E1C-7D81-20AF-80D0-720000000000},2\"");
-        assert_eq!(item.size, 3);
-        assert_eq!(item.parent_reference.id, "A0AA0A000A000A0A!113");
+        assert_eq!(item.last_modified_date_time, Some("2025-02-16T19:49:05Z".to_string()));
+        assert_eq!(item.e_tag, Some("\"{3B131E1C-7D81-20AF-80D0-720000000000},2\"".to_string()));
+        assert_eq!(item.size, Some(3));
+        assert_eq!(item.parent_reference.as_ref().unwrap().id, Some("A0AA0A000A000A0A!113".to_string()));
         assert!(item.versions.is_none());
         if let ItemType::File { file, .. } = &item.item_type {
             assert_eq!(file.mime_type, "text/plain");

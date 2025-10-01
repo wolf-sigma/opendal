@@ -75,6 +75,11 @@ impl oio::PageList for SharePointLister {
         }
 
         let bytes = response.into_body();
+
+        // Log the raw JSON response for debugging
+        let body_str = String::from_utf8_lossy(bytes.chunk());
+        log::debug!("Raw SharePoint API response: {}", body_str);
+
         let decoded_response: GraphApiSharePointListResponse =
             serde_json::from_reader(bytes.reader()).map_err(new_json_deserialize_error)?;
 
@@ -106,7 +111,10 @@ impl oio::PageList for SharePointLister {
 
         for drive_item in decoded_response.value {
             let name = drive_item.name;
-            let parent_path = drive_item.parent_reference.path;
+            let parent_path = drive_item.parent_reference
+                .as_ref()
+                .and_then(|pr| pr.path.as_deref())
+                .unwrap_or("/drive/root:");
             let parent_path = parent_path
                 .strip_prefix(Self::DRIVE_ROOT_PREFIX)
                 .unwrap_or("");
@@ -123,12 +131,20 @@ impl oio::PageList for SharePointLister {
                 normalized_path.push('/');
             }
 
-            let mut meta = Metadata::new(entry_mode)
-                .with_etag(drive_item.e_tag)
-                .with_content_length(drive_item.size.max(0) as u64);
-            let last_modified =
-                parse_datetime_from_rfc3339(drive_item.last_modified_date_time.as_str())?;
-            meta.set_last_modified(last_modified);
+            let mut meta = Metadata::new(entry_mode);
+
+            if let Some(etag) = drive_item.e_tag {
+                meta = meta.with_etag(etag);
+            }
+
+            if let Some(size) = drive_item.size {
+                meta = meta.with_content_length(size.max(0) as u64);
+            }
+
+            if let Some(last_modified_str) = drive_item.last_modified_date_time {
+                let last_modified = parse_datetime_from_rfc3339(last_modified_str.as_str())?;
+                meta.set_last_modified(last_modified);
+            }
 
             // When listing a directory with `$expand=versions`, SharePoint returns 400 "Operation not supported".
             // Thus, `list_with_versions` induces N+1 requests. This N+1 is intentional.

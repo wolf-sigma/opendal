@@ -285,9 +285,15 @@ impl SharePointCore {
             ItemType::File { .. } => EntryMode::FILE,
         };
 
-        let mut meta = Metadata::new(entry_mode)
-            .with_etag(decoded_response.e_tag)
-            .with_content_length(decoded_response.size.max(0) as u64);
+        let mut meta = Metadata::new(entry_mode);
+
+        if let Some(etag) = decoded_response.e_tag {
+            meta = meta.with_etag(etag);
+        }
+
+        if let Some(size) = decoded_response.size {
+            meta = meta.with_content_length(size.max(0) as u64);
+        }
 
         if let Some(version) = args.version() {
             for item_version in decoded_response.versions.as_deref().unwrap_or_default() {
@@ -305,9 +311,10 @@ impl SharePointCore {
             }
         }
 
-        let last_modified = decoded_response.last_modified_date_time;
-        let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
-        meta.set_last_modified(date_utc_last_modified);
+        if let Some(last_modified) = decoded_response.last_modified_date_time {
+            let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+            meta.set_last_modified(date_utc_last_modified);
+        }
 
         Ok(meta)
     }
@@ -368,7 +375,7 @@ impl SharePointCore {
         args: &OpRead,
     ) -> Result<Response<HttpBody>> {
         // We can't "select" the SharePoint API response fields when reading because "select" shadows not found error
-        let url: String = format!("{}:/content", self.sharepoint_item_url(path, true).await?);
+        let url: String = format!("{}/content", self.sharepoint_item_url(path, true).await?);
 
         let mut request = Request::get(&url).header(header::RANGE, args.range().to_header());
         if let Some(etag) = args.if_none_match() {
@@ -569,9 +576,9 @@ impl SharePointCore {
         let item = self.ensure_directory(&destination_parent).await?;
         let body = SharePointPatchRequestBody {
             parent_reference: ParentReference {
-                path: "".to_string(), // irrelevant for copy
-                drive_id: item.parent_reference.drive_id,
-                id: item.id,
+                path: Some("".to_string()), // irrelevant for copy
+                drive_id: item.parent_reference.as_ref().map(|pr| pr.drive_id.clone()).unwrap_or_default(),
+                id: Some(item.id),
             },
             name: basename.to_string(),
         };
@@ -661,10 +668,10 @@ impl SharePointCore {
         let item = self.ensure_directory(&destination_parent).await?;
         let body = SharePointPatchRequestBody {
             parent_reference: ParentReference {
-                path: "".to_string(), // irrelevant for update
+                path: Some("".to_string()), // irrelevant for update
                 // reusing `ParentReference` for convenience. The API requires this value to be correct.
-                drive_id: item.parent_reference.drive_id,
-                id: item.id,
+                drive_id: item.parent_reference.as_ref().map(|pr| pr.drive_id.clone()).unwrap_or_default(),
+                id: Some(item.id),
             },
             name: basename.to_string(),
         };
