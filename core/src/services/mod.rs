@@ -204,3 +204,7 @@ pub use yandex_disk::*;
 
 #[cfg(target_arch = "wasm32")]
 mod opfs;
+
+mod sharepoint;
+pub use sharepoint::*;
+
