@@ -278,3 +278,8 @@ uuid = { workspace = true, features = ["serde", "v4"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 opendal-service-opfs = { path = "services/opfs", version = "0.55.0", optional = true, default-features = false }
+
+# Patch reqsign 0.16.5 with Azure Container Instances (ACI) managed identity support
+# This fork adds IDENTITY_ENDPOINT and IDENTITY_HEADER env var support used by ACI
+[patch.crates-io]
+reqsign = { git = "https://github.com/wolf-sigma/reqsign-aci.git", branch = "master" }
