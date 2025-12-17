@@ -19,21 +19,15 @@ use std::fmt::Debug;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
-use chrono::DateTime;
-use chrono::Utc;
 use log::debug;
+use mea::mutex::Mutex;
 use services::sharepoint::core::SharePointCore;
 use services::sharepoint::core::SharePointSigner;
-use tokio::sync::Mutex;
 
 use super::backend::SharepointBackend;
+use super::config::SharepointConfig;
 use super::DEFAULT_SCHEME;
-use crate::raw::normalize_root;
-use crate::raw::Access;
-use crate::raw::AccessorInfo;
-use crate::raw::HttpClient;
-use crate::services::SharepointConfig;
-use crate::Scheme;
+use crate::raw::*;
 use crate::*;
 
 impl Configurator for SharepointConfig {
@@ -178,7 +172,7 @@ impl Builder for SharepointBuilder {
                 ErrorKind::ConfigInvalid,
                 "either site_id or site_url must be set for SharePoint",
             )
-            .with_context("service", Scheme::Onedrive));
+            .with_context("service", DEFAULT_SCHEME));
         }
 
         let info = AccessorInfo::default();
@@ -230,7 +224,7 @@ impl Builder for SharepointBuilder {
         match (self.config.access_token, self.config.refresh_token) {
             (Some(access_token), None) => {
                 signer.access_token = access_token;
-                signer.expires_in = DateTime::<Utc>::MAX_UTC;
+                signer.expires_in = Timestamp::MAX;
             }
             (None, Some(refresh_token)) => {
                 let client_id = self.config.client_id.ok_or_else(|| {
@@ -238,7 +232,7 @@ impl Builder for SharepointBuilder {
                         ErrorKind::ConfigInvalid,
                         "client_id must be set when refresh_token is set",
                     )
-                    .with_context("service", Scheme::Onedrive)
+                    .with_context("service", DEFAULT_SCHEME)
                 })?;
 
                 signer.refresh_token = refresh_token;
@@ -252,14 +246,14 @@ impl Builder for SharepointBuilder {
                     ErrorKind::ConfigInvalid,
                     "access_token and refresh_token cannot be set at the same time",
                 )
-                .with_context("service", Scheme::Onedrive))
+                .with_context("service", DEFAULT_SCHEME))
             }
             (None, None) => {
                 return Err(Error::new(
                     ErrorKind::ConfigInvalid,
                     "access_token or refresh_token must be set",
                 )
-                .with_context("service", Scheme::Onedrive))
+                .with_context("service", DEFAULT_SCHEME))
             }
         };
 

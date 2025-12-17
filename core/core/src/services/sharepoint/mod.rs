@@ -16,7 +16,6 @@
 // under the License.
 
 /// Default scheme for sharepoint service.
-
 pub(super) const DEFAULT_SCHEME: &str = "sharepoint";
 
 mod backend;

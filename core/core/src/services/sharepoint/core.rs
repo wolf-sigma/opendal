@@ -22,13 +22,11 @@ use std::time::Duration;
 
 use bytes::Buf;
 use bytes::Bytes;
-use chrono::DateTime;
-use chrono::Utc;
 use http::header;
 use http::Request;
 use http::Response;
 use http::StatusCode;
-use tokio::sync::Mutex;
+use mea::mutex::Mutex;
 
 use super::error::parse_error;
 use super::graph_model::*;
@@ -312,7 +310,7 @@ impl SharePointCore {
         }
 
         if let Some(last_modified) = decoded_response.last_modified_date_time {
-            let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+            let date_utc_last_modified = last_modified.parse::<Timestamp>()?;
             meta.set_last_modified(date_utc_last_modified);
         }
 
@@ -708,7 +706,7 @@ pub struct SharePointSigner {
     pub refresh_token: String,
 
     pub access_token: String,
-    pub expires_in: DateTime<Utc>,
+    pub expires_in: Timestamp,
 }
 
 // SharePoint is part of Graph API hence shares the same authentication and authorization processes.
@@ -729,7 +727,7 @@ impl SharePointSigner {
             client_secret: "".to_string(),
             refresh_token: "".to_string(),
             access_token: "".to_string(),
-            expires_in: DateTime::<Utc>::MIN_UTC,
+            expires_in: Timestamp::MIN,
         }
     }
 
@@ -756,10 +754,8 @@ impl SharePointSigner {
                         .map_err(new_json_deserialize_error)?;
                 self.access_token = data.access_token;
                 self.refresh_token = data.refresh_token;
-                self.expires_in = Utc::now()
-                    + chrono::TimeDelta::try_seconds(data.expires_in)
-                        .expect("expires_in must be valid seconds")
-                    - chrono::TimeDelta::minutes(2); // assumes 2 mins graceful transmission for implementation simplicity
+                self.expires_in = Timestamp::now() + Duration::from_secs(data.expires_in)
+                    - Duration::from_secs(120); // assumes 2 mins graceful transmission for implementation simplicity
                 Ok(())
             }
             _ => Err(parse_error(response)),
@@ -768,7 +764,7 @@ impl SharePointSigner {
 
     /// Sign a request.
     pub async fn sign<T>(&mut self, request: &mut Request<T>) -> Result<()> {
-        if !self.access_token.is_empty() && self.expires_in > Utc::now() {
+        if !self.access_token.is_empty() && self.expires_in > Timestamp::now() {
             let value = format!("Bearer {}", self.access_token)
                 .parse()
                 .expect("access_token must be valid header value");

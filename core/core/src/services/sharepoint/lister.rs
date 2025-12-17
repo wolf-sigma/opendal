@@ -142,7 +142,7 @@ impl oio::PageList for SharePointLister {
             }
 
             if let Some(last_modified_str) = drive_item.last_modified_date_time {
-                let last_modified = parse_datetime_from_rfc3339(last_modified_str.as_str())?;
+                let last_modified = last_modified_str.parse::<Timestamp>()?;
                 meta.set_last_modified(last_modified);
             }
 

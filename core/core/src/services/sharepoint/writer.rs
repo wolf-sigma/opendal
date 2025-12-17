@@ -86,7 +86,7 @@ impl SharePointWriter {
                 }
 
                 if let Some(last_modified) = item.last_modified_date_time {
-                    let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+                    let date_utc_last_modified = last_modified.parse::<Timestamp>()?;
                     meta.set_last_modified(date_utc_last_modified);
                 }
 
@@ -148,7 +148,7 @@ impl SharePointWriter {
                     }
 
                     if let Some(last_modified) = item.last_modified_date_time {
-                        let date_utc_last_modified = parse_datetime_from_rfc3339(&last_modified)?;
+                        let date_utc_last_modified = last_modified.parse::<Timestamp>()?;
                         meta.set_last_modified(date_utc_last_modified);
                     }
                     return Ok(meta);
