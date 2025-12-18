@@ -433,3 +433,8 @@ tracing-subscriber = { version = "0.3", features = [
   "env-filter",
   "tracing-log",
 ] }
+
+# Patch reqsign 0.16.5 with Azure Container Instances (ACI) managed identity support
+# This fork adds IDENTITY_ENDPOINT and IDENTITY_HEADER env var support used by ACI
+[patch.crates-io]
+reqsign = { git = "https://github.com/wolf-sigma/reqsign-aci.git", branch = "master" }
