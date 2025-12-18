@@ -24,6 +24,7 @@ use log::debug;
 use reqsign::AzureStorageConfig;
 use reqsign::AzureStorageLoader;
 use reqsign::AzureStorageSigner;
+use tracing::instrument;
 
 use super::AZDLS_SCHEME;
 use super::config::AzdlsConfig;
@@ -75,6 +76,7 @@ impl AzdlsBuilder {
     /// Set root of this backend.
     ///
     /// All operations will happen under this root.
+    #[instrument]
     pub fn root(mut self, root: &str) -> Self {
         self.config.root = if root.is_empty() {
             None
@@ -86,6 +88,7 @@ impl AzdlsBuilder {
     }
 
     /// Set filesystem name of this backend.
+    #[instrument]
     pub fn filesystem(mut self, filesystem: &str) -> Self {
         self.config.filesystem = filesystem.to_string();
 
@@ -98,6 +101,7 @@ impl AzdlsBuilder {
     ///
     /// - Azblob: `https://accountname.blob.core.windows.net`
     /// - Azurite: `http://127.0.0.1:10000/devstoreaccount1`
+    #[instrument]
     pub fn endpoint(mut self, endpoint: &str) -> Self {
         if !endpoint.is_empty() {
             // Trim trailing `/` so that we can accept `http://127.0.0.1:9000/`
@@ -111,6 +115,7 @@ impl AzdlsBuilder {
     ///
     /// - If account_name is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
+    #[instrument]
     pub fn account_name(mut self, account_name: &str) -> Self {
         if !account_name.is_empty() {
             self.config.account_name = Some(account_name.to_string());
@@ -123,6 +128,7 @@ impl AzdlsBuilder {
     ///
     /// - If account_key is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
+    #[instrument]
     pub fn account_key(mut self, account_key: &str) -> Self {
         if !account_key.is_empty() {
             self.config.account_key = Some(account_key.to_string());
@@ -136,6 +142,7 @@ impl AzdlsBuilder {
     /// - If client_secret is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
     /// - required for client_credentials authentication
+    #[instrument]
     pub fn client_secret(mut self, client_secret: &str) -> Self {
         if !client_secret.is_empty() {
             self.config.client_secret = Some(client_secret.to_string());
@@ -149,6 +156,7 @@ impl AzdlsBuilder {
     /// - If tenant_id is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
     /// - required for client_credentials authentication
+    #[instrument]
     pub fn tenant_id(mut self, tenant_id: &str) -> Self {
         if !tenant_id.is_empty() {
             self.config.tenant_id = Some(tenant_id.to_string());
@@ -162,6 +170,7 @@ impl AzdlsBuilder {
     /// - If client_id is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
     /// - required for client_credentials authentication
+    #[instrument]
     pub fn client_id(mut self, client_id: &str) -> Self {
         if !client_id.is_empty() {
             self.config.client_id = Some(client_id.to_string());
@@ -171,6 +180,7 @@ impl AzdlsBuilder {
     }
 
     /// Set the sas_token of this backend.
+    #[instrument]
     pub fn sas_token(mut self, sas_token: &str) -> Self {
         if !sas_token.is_empty() {
             self.config.sas_token = Some(sas_token.to_string());
@@ -184,6 +194,7 @@ impl AzdlsBuilder {
     /// - If authority_host is set, we will take user's input first.
     /// - If not, we will try to load it from environment.
     /// - default value: `https://login.microsoftonline.com`
+    #[instrument]
     pub fn authority_host(mut self, authority_host: &str) -> Self {
         if !authority_host.is_empty() {
             self.config.authority_host = Some(authority_host.to_string());
@@ -213,6 +224,7 @@ impl AzdlsBuilder {
     ///     .build()
     ///     .unwrap();
     /// ```
+    #[instrument]
     pub fn from_connection_string(conn_str: &str) -> Result<Self> {
         let config = azure_config_from_connection_string(conn_str, AzureStorageService::Adls)?;
 
@@ -223,6 +235,7 @@ impl AzdlsBuilder {
 impl Builder for AzdlsBuilder {
     type Config = AzdlsConfig;
 
+    #[instrument]
     fn build(self) -> Result<impl Access> {
         debug!("backend build started: {:?}", &self);
 
@@ -341,10 +354,12 @@ impl Access for AzdlsBackend {
     type Lister = oio::PageLister<AzdlsLister>;
     type Deleter = oio::OneShotDeleter<AzdlsDeleter>;
 
+    #[instrument]
     fn info(&self) -> Arc<AccessorInfo> {
         self.core.info.clone()
     }
 
+    #[instrument]
     async fn create_dir(&self, path: &str, _: OpCreateDir) -> Result<RpCreateDir> {
         let resp = self
             .core
@@ -358,6 +373,7 @@ impl Access for AzdlsBackend {
         }
     }
 
+    #[instrument]
     async fn stat(&self, path: &str, _: OpStat) -> Result<RpStat> {
         // Stat root always returns a DIR.
         // TODO: include metadata for the root (#4746)
@@ -369,6 +385,7 @@ impl Access for AzdlsBackend {
         Ok(RpStat::new(metadata))
     }
 
+    #[instrument]
     async fn read(&self, path: &str, args: OpRead) -> Result<(RpRead, Self::Reader)> {
         let resp = self.core.azdls_read(path, args.range()).await?;
 
@@ -383,6 +400,7 @@ impl Access for AzdlsBackend {
         }
     }
 
+    #[instrument]
     async fn write(&self, path: &str, args: OpWrite) -> Result<(RpWrite, Self::Writer)> {
         if args.append() {
             let w = AzdlsWriter::new(self.core.clone(), args.clone(), path.to_string());
@@ -397,6 +415,7 @@ impl Access for AzdlsBackend {
         Ok((RpWrite::default(), AzdlsWriters::One(w)))
     }
 
+    #[instrument]
     async fn delete(&self) -> Result<(RpDelete, Self::Deleter)> {
         Ok((
             RpDelete::default(),
@@ -404,12 +423,14 @@ impl Access for AzdlsBackend {
         ))
     }
 
+    #[instrument]
     async fn list(&self, path: &str, args: OpList) -> Result<(RpList, Self::Lister)> {
         let l = AzdlsLister::new(self.core.clone(), path.to_string(), args.limit());
 
         Ok((RpList::default(), oio::PageLister::new(l)))
     }
 
+    #[instrument]
     async fn rename(&self, from: &str, to: &str, _args: OpRename) -> Result<RpRename> {
         if let Some(resp) = self.core.azdls_ensure_parent_path(to).await? {
             let status = resp.status();

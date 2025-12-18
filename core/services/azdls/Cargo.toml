@@ -33,7 +33,6 @@ all-features = true
 [dependencies]
 opendal-core = { path = "../../core", version = "0.55.0", default-features = false }
 opendal-service-azure-common = { path = "../azure-common", version = "0.55.0" }
-
 bytes = { workspace = true }
 ctor = { workspace = true }
 http = { workspace = true }
@@ -45,3 +44,4 @@ reqsign = { workspace = true, default-features = false, features = [
 ] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+tracing = "0.1"
